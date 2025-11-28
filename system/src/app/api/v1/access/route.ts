@@ -180,9 +180,11 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
         return NextResponse.json(
             {
                 access: buildAccess(),
-                token: token,
-                user: userData.email,
-                scanner: scanner,
+                data: {
+                    token: token,
+                    user: userData.email,
+                    scanner: scanner
+                },
                 timestamp
             },
             {status: hasAccess ? 200 : 403}
@@ -192,7 +194,7 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
         return NextResponse.json(
             {
                 access: {granted: false},
-                error: 'Internal server error',
+                error: `Internal server error: ${error}`,
                 timestamp
             },
             {status: 500}

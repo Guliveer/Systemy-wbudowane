@@ -1,43 +1,20 @@
-import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
+import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
 
-// Initialize Supabase client with service role key for API access
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-interface AccessInfo {
+interface ResponseAccess {
     granted: boolean;
     until?: string;
     denyReason?: string;
 }
 
-interface TokenInfo {
-    rfid: string;
-    name?: string;
-}
-
-interface UserInfo {
-    email: string;
-    fullName?: string;
-    role: "root" | "admin" | "user";
-}
-
-interface ScannerInfo {
-    id: string;
-    name: string;
-    location: string;
-    direction: "entry" | "exit" | "both";
-    description?: string;
-}
-
 interface ResponseData {
-    token: TokenInfo;
-    user: UserInfo;
-    scanner: ScannerInfo;
+    token: string;
+    user: string;
+    scanner: string;
 }
 
 interface SuccessResponse {
-    access: AccessInfo;
+    access: ResponseAccess;
     data: ResponseData;
     timestamp: string;
 }
@@ -49,6 +26,10 @@ interface ErrorResponse {
 }
 
 type Response = SuccessResponse | ErrorResponse;
+
+// Initialize Supabase client with secret API key for API access
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseSecretKey = process.env.SUPABASE_SECRET_API_KEY!;
 
 /**
  * Verifies if an RFID token has access to a specific scanner.
@@ -67,7 +48,7 @@ type Response = SuccessResponse | ErrorResponse;
  *   "token": "A1B2C3D4"
  * }
  *
- * @returns {Response} JSON response with access decision
+ * @returns JSON response with access decision
  *
  * @throws {400} Missing required fields (scanner or token)
  * @throws {403} Token is disabled, Scanner is disabled, or Access denied
@@ -86,29 +67,29 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "Missing required fields. Both scanner and token are required.",
-                    timestamp,
+                    error: 'Missing required fields. Both scanner and token are required.',
+                    timestamp
                 },
                 {status: 400}
             );
         }
 
         // Create Supabase client with service role for server-side operations
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const supabase = createClient(supabaseUrl, supabaseSecretKey);
 
         // Step 1: Find the token by RFID UID
         const {
             data: tokenData,
             error: tokenError
-        } = await supabase.from("tokens").select("id, user_id, is_active, name").eq("rfid_uid", token).single();
+        } = await supabase.from('tokens').select('id, user_id, is_active, name').eq('rfid_uid', token).single();
 
         if (tokenError || !tokenData) {
             // Token not found
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "Token not found",
-                    timestamp,
+                    error: 'Token not found',
+                    timestamp
                 },
                 {status: 404}
             );
@@ -119,8 +100,8 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "Token is disabled",
-                    timestamp,
+                    error: 'Token is disabled',
+                    timestamp
                 },
                 {status: 403}
             );
@@ -130,107 +111,89 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
         const {
             data: userData,
             error: userError
-        } = await supabase.from("users").select("id, email, full_name, role").eq("id", tokenData.user_id).single();
+        } = await supabase.from('users').select('id, email').eq('id', tokenData.user_id).single();
 
         if (userError || !userData) {
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "User not found",
-                    timestamp,
+                    error: 'User not found',
+                    timestamp
                 },
                 {status: 404}
             );
         }
-
-        // Helper to build user object with optional fields
-        const buildUser = () => ({
-            email: userData.email,
-            ...(userData.full_name && {fullName: userData.full_name}),
-            role: userData.role,
-        });
 
         // Step 3: Get scanner information
         const {
             data: scannerData,
             error: scannerError
-        } = await supabase.from("scanners").select("id, name, location, description, reader_type, is_active").eq("id", scanner).single();
+        } = await supabase.from('scanners').select('id, is_active').eq('id', scanner).single();
 
         if (scannerError || !scannerData) {
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "Scanner not found",
-                    timestamp,
+                    error: 'Scanner not found',
+                    timestamp
                 },
                 {status: 404}
             );
         }
 
-        // Helper to build scanner object with optional fields
-        const buildScanner = () => ({
-            id: scanner,
-            name: scannerData.name,
-            location: scannerData.location,
-            direction: scannerData.reader_type,
-            ...(scannerData.description && {description: scannerData.description}),
-        });
-
         if (!scannerData.is_active) {
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: "Scanner is disabled",
-                    timestamp,
+                    error: 'Scanner is disabled',
+                    timestamp
                 },
                 {status: 403}
             );
         }
 
         // Step 4: Check if user has access to this scanner
-        const {data: accessData} = await supabase.from("scanner_access").select("id, expires_at").eq("user_id", tokenData.user_id).eq("scanner_id", scanner).single();
+        const {data: accessData} = await supabase.from('scanner_access').select('id, expires_at').eq('user_id', tokenData.user_id).eq('scanner_id', scanner).single();
 
         const hasAccess = accessData && (!accessData.expires_at || new Date(accessData.expires_at) > new Date());
 
         // Step 5: Log the access attempt
-        await supabase.from("access_logs").insert({
+        await supabase.from('access_logs').insert({
             token_id: tokenData.id,
             scanner_id: scanner,
             access_granted: hasAccess,
-            rfid_uid: token,
+            rfid_uid: token
         });
 
         // Step 6: Update token last_used_at if access granted
         if (hasAccess) {
-            await supabase.from("tokens").update({last_used_at: new Date().toISOString()}).eq("id", tokenData.id);
+            await supabase.from('tokens').update({last_used_at: new Date().toISOString()}).eq('id', tokenData.id);
         }
 
         // Build access object with granted status, optional until, and optional denyReason
         const buildAccess = () => ({
             granted: hasAccess,
             ...(accessData?.expires_at && {until: accessData.expires_at}),
-            ...(!hasAccess && {denyReason: "Access denied for this scanner"}),
+            ...(!hasAccess && {denyReason: 'Access denied for this scanner'})
         });
 
         return NextResponse.json(
             {
                 access: buildAccess(),
-                data: {
-                    token: {rfid: token, name: tokenData.name},
-                    user: buildUser(),
-                    scanner: buildScanner(),
-                },
-                timestamp,
+                token: token,
+                user: userData.email,
+                scanner: scanner,
+                timestamp
             },
             {status: hasAccess ? 200 : 403}
         );
     } catch (error) {
-        console.error("POST access error:", error);
+        console.error('POST access error:', error);
         return NextResponse.json(
             {
                 access: {granted: false},
-                error: "Internal server error",
-                timestamp,
+                error: 'Internal server error',
+                timestamp
             },
             {status: 500}
         );

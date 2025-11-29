@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { LucideIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +16,11 @@ interface StatCardProps {
   isLoading?: boolean;
 }
 
-export function StatCard({ title, value, description, icon: Icon, iconClassName, trend, isLoading }: StatCardProps) {
+/**
+ * Memoized stat card component
+ * Only re-renders when props change
+ */
+export const StatCard = memo(function StatCard({ title, value, description, icon: Icon, iconClassName, trend, isLoading }: StatCardProps) {
     const showLoading = isLoading || value === '...';
 
     return (
@@ -41,14 +46,17 @@ export function StatCard({ title, value, description, icon: Icon, iconClassName,
             </CardContent>
         </Card>
     );
-}
+});
 
 interface StatCardsGridProps {
   children: React.ReactNode;
   columns?: 2 | 3 | 4 | 5;
 }
 
-export function StatCardsGrid({ children, columns = 4 }: StatCardsGridProps) {
+/**
+ * Memoized grid container for stat cards
+ */
+export const StatCardsGrid = memo(function StatCardsGrid({ children, columns = 4 }: StatCardsGridProps) {
     const colsClass = {
         2: 'md:grid-cols-2',
         3: 'md:grid-cols-3',
@@ -57,4 +65,4 @@ export function StatCardsGrid({ children, columns = 4 }: StatCardsGridProps) {
     };
 
     return <div className={`grid gap-4 ${colsClass[columns]}`}>{children}</div>;
-}
+});

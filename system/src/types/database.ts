@@ -9,6 +9,7 @@ export interface User {
   email: string;
   role: UserRole;
   full_name: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ export interface ScannerAccess {
   user_id: string;
   scanner_id: string;
   granted_by: string; // ID of user who granted access
+  is_active: boolean; // Whether the access is currently enabled
   created_at: string;
   expires_at: string | null; // Optional access expiration date
 }

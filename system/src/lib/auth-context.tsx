@@ -6,19 +6,18 @@ import { createClient } from '@/utils/supabase/client';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
-    user: User | null;
-    isLoading: boolean;
-    refreshUser: () => Promise<void>;
+  user: User | null;
+  isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     isLoading: true,
-    refreshUser: async () => {
-    }
+    refreshUser: async () => {}
 });
 
-export function AuthProvider({children}: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const supabase = createClient();
@@ -26,7 +25,7 @@ export function AuthProvider({children}: { children: ReactNode }) {
     const fetchUser = async () => {
         try {
             const {
-                data: {user: authUser},
+                data: { user: authUser },
                 error: authError
             } = await supabase.auth.getUser();
 
@@ -41,9 +40,9 @@ export function AuthProvider({children}: { children: ReactNode }) {
                 logger.log('Auth user found:', authUser.id, authUser.email);
 
                 // Try to get user from users table
-                const {data: userData, error} = await supabase.from('users').select('*').eq('id', authUser.id).single();
+                const { data: userData, error } = await supabase.from('users').select('*').eq('id', authUser.id).single();
 
-                logger.log('User data query result:', {userData, error});
+                logger.log('User data query result:', { userData, error });
 
                 if (error) {
                     logger.error('Error fetching user data:', error);
@@ -55,7 +54,8 @@ export function AuthProvider({children}: { children: ReactNode }) {
                         role: 'user' as const,
                         full_name: authUser.user_metadata?.full_name || null,
                         created_at: authUser.created_at || new Date().toISOString(),
-                        updated_at: new Date().toISOString()
+                        updated_at: new Date().toISOString(),
+                        is_active: true
                     });
                 } else {
                     logger.log('Setting user from database:', userData);
@@ -76,7 +76,7 @@ export function AuthProvider({children}: { children: ReactNode }) {
         fetchUser();
 
         const {
-            data: {subscription}
+            data: { subscription }
         } = supabase.auth.onAuthStateChange(async (event) => {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
                 await fetchUser();
@@ -90,7 +90,7 @@ export function AuthProvider({children}: { children: ReactNode }) {
         };
     }, []);
 
-    return <AuthContext.Provider value={{user, isLoading, refreshUser: fetchUser}}>{children}</AuthContext.Provider>;
+    return <AuthContext.Provider value={{ user, isLoading, refreshUser: fetchUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

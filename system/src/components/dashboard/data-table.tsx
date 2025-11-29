@@ -19,8 +19,9 @@ export interface Column<T> {
 
 // Action definition
 export interface Action<T> {
-  label: string;
+  label: string | ((item: T) => string);
   icon?: LucideIcon;
+  iconGetter?: (item: T) => LucideIcon;
   onClick: (item: T) => void;
   variant?: 'default' | 'destructive';
   show?: (item: T) => boolean;
@@ -195,15 +196,20 @@ function ActionsDropdown<T>({ item, actions }: ActionsDropdownProps<T>) {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {visibleActions.map((action, index) => (
-                    <div key={action.label}>
-                        {action.separator && index > 0 && <DropdownMenuSeparator />}
-                        <DropdownMenuItem className={action.variant === 'destructive' ? 'text-destructive' : ''} onClick={() => action.onClick(item)}>
-                            {action.icon && <action.icon className="mr-2 h-4 w-4" />}
-                            {action.label}
-                        </DropdownMenuItem>
-                    </div>
-                ))}
+                {visibleActions.map((action, index) => {
+                    const label = typeof action.label === 'function' ? action.label(item) : action.label;
+                    const IconComponent = action.iconGetter ? action.iconGetter(item) : action.icon;
+
+                    return (
+                        <div key={label}>
+                            {action.separator && index > 0 && <DropdownMenuSeparator />}
+                            <DropdownMenuItem className={action.variant === 'destructive' ? 'text-destructive' : ''} onClick={() => action.onClick(item)}>
+                                {IconComponent && <IconComponent className="mr-2 h-4 w-4" />}
+                                {label}
+                            </DropdownMenuItem>
+                        </div>
+                    );
+                })}
             </DropdownMenuContent>
         </DropdownMenu>
     );

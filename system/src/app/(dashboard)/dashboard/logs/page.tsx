@@ -230,6 +230,15 @@ export default function LogsPage() {
                     )}
                 </Badge>
             )
+        },
+        {
+            key: 'denial_reason',
+            header: 'Reason',
+            render: (log) => {
+                if (log.access_granted) { return <span className="text-muted-foreground">—</span>; }
+                const isUnknown = !log.token_id || !log.user_name;
+                return <Badge variant="outline">{log.denial_reason || (isUnknown ? 'Unknown token' : 'No access')}</Badge>;
+            }
         }
     ];
 

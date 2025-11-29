@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Shield, UserCog, Key, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, UserCog, Key, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown, UserX, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/utils/supabase/client';
 import { logger } from '@/lib/logger';
-import { createUser, deleteUser, resetUserPassword } from './actions';
-import { PageHeader, DataTable, FormDialog } from '@/components/dashboard';
+import { createUser, deleteUser, resetUserPassword, toggleUserActive } from './actions';
+import { PageHeader, DataTable, FormDialog, ConfirmDialog } from '@/components/dashboard';
 import { useCrud, useDialog, useForm, useSubmit } from '@/hooks/use-crud';
 import type { User, UserRole } from '@/types/database';
 import { canManageRole } from '@/types/database';
@@ -83,6 +83,10 @@ const getRoleBadgeVariant = (role: UserRole): 'destructive' | 'default' | 'secon
     }
 };
 
+const getStatusBadgeVariant = (isActive: boolean): 'default' | 'secondary' => {
+    return isActive ? 'default' : 'secondary';
+};
+
 type SortField = 'id' | 'full_name' | 'email' | 'role' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
@@ -92,6 +96,7 @@ export default function UsersPage() {
     const { data: users, isLoading, fetchData } = useCrud<User>({ table: 'users' });
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled'>('all');
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [pageSize, setPageSize] = useState<number>(50);
@@ -101,6 +106,8 @@ export default function UsersPage() {
     const editDialog = useDialog<User>();
     const roleDialog = useDialog<User>();
     const passwordDialog = useDialog<User>();
+    const deleteDialog = useDialog<User>();
+    const toggleActiveDialog = useDialog<User>();
 
     const createForm = useForm<CreateUserForm>(initialCreateForm);
     const editForm = useForm<EditUserForm>(initialEditForm);
@@ -236,10 +243,10 @@ export default function UsersPage() {
         });
     };
 
-    const handleDeleteUser = async (user: User) => {
-        if (!confirm(`Are you sure you want to delete ${user.email}?`)) {
-            return;
-        }
+    const handleDeleteUser = async () => {
+        if (!deleteDialog.selectedItem) { return; }
+
+        const user = deleteDialog.selectedItem;
 
         try {
             const result = await deleteUser(user.id);
@@ -250,9 +257,36 @@ export default function UsersPage() {
             }
 
             toast.success('User deleted', { description: `Deleted ${user.email}` });
+            deleteDialog.close();
             fetchData();
         } catch (error) {
             logger.error('Error deleting user:', error);
+            toast.error('An unexpected error occurred');
+        }
+    };
+
+    const handleToggleUserActive = async () => {
+        if (!toggleActiveDialog.selectedItem) { return; }
+
+        const user = toggleActiveDialog.selectedItem;
+        const newStatus = !user.is_active;
+        const action = newStatus ? 'enable' : 'disable';
+
+        try {
+            const result = await toggleUserActive(user.id, newStatus);
+
+            if (!result.success) {
+                toast.error(`Failed to ${action} user`, { description: result.error });
+                return;
+            }
+
+            toast.success(`User ${newStatus ? 'enabled' : 'disabled'}`, {
+                description: `${user.email} access has been ${newStatus ? 'enabled' : 'disabled'}`
+            });
+            toggleActiveDialog.close();
+            fetchData();
+        } catch (error) {
+            logger.error('Error toggling user active status:', error);
             toast.error('An unexpected error occurred');
         }
     };
@@ -277,10 +311,22 @@ export default function UsersPage() {
     // First filter
         const filtered = users.filter((user) => {
             // Role filter
-            if (roleFilter !== 'all' && user.role !== roleFilter) { return false; }
+            if (roleFilter !== 'all' && user.role !== roleFilter) {
+                return false;
+            }
+
+            // Status filter
+            if (statusFilter === 'active' && !user.is_active) {
+                return false;
+            }
+            if (statusFilter === 'disabled' && user.is_active) {
+                return false;
+            }
 
             // Search query filter
-            if (!searchQuery) { return true; }
+            if (!searchQuery) {
+                return true;
+            }
             const query = searchQuery.toLowerCase();
             return user.id.toLowerCase().includes(query) || user.email.toLowerCase().includes(query) || user.full_name?.toLowerCase().includes(query) || user.role.toLowerCase().includes(query);
         });
@@ -320,7 +366,7 @@ export default function UsersPage() {
         });
 
         return sorted;
-    }, [users, searchQuery, roleFilter, sortField, sortDirection]);
+    }, [users, searchQuery, roleFilter, statusFilter, sortField, sortDirection]);
 
     // Paginated users
     const paginatedUsers = useMemo(() => {
@@ -336,7 +382,7 @@ export default function UsersPage() {
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, roleFilter, pageSize]);
+    }, [searchQuery, roleFilter, statusFilter, pageSize]);
 
     // Handle page change with scroll to top
     const handlePageChange = (page: number) => {
@@ -354,11 +400,12 @@ export default function UsersPage() {
     const clearFilters = () => {
         setSearchQuery('');
         setRoleFilter('all');
+        setStatusFilter('all');
         setSortField('created_at');
         setSortDirection('desc');
     };
 
-    const hasActiveFilters = searchQuery || roleFilter !== 'all';
+    const hasActiveFilters = searchQuery || roleFilter !== 'all' || statusFilter !== 'all';
 
     // Toggle sort
     const toggleSort = (field: SortField) => {
@@ -372,7 +419,9 @@ export default function UsersPage() {
 
     // Sort icon component
     const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) { return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />; }
+        if (sortField !== field) {
+            return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />;
+        }
         return sortDirection === 'asc' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
     };
 
@@ -424,6 +473,11 @@ export default function UsersPage() {
             render: (user) => <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
         },
         {
+            key: 'status',
+            header: 'Status',
+            render: (user) => <Badge variant={getStatusBadgeVariant(user.is_active)}>{user.is_active ? 'Active' : 'Disabled'}</Badge>
+        },
+        {
             key: 'created',
             header: (
                 <button className="inline-flex items-center hover:text-foreground" onClick={() => toggleSort('created_at')}>
@@ -437,15 +491,21 @@ export default function UsersPage() {
     // Table actions
     const actions: Action<User>[] = [
         { label: 'Edit', icon: Pencil, onClick: openEditDialog, show: canManageUser },
-        { label: 'Change Role', icon: UserCog, onClick: openRoleDialog, show: (u) => canChangeRoles && canManageUser(u) },
+        { label: 'Change Role', icon: UserCog, onClick: openRoleDialog, show: (u: User) => canChangeRoles && canManageUser(u) },
         { label: 'Reset Password', icon: Key, onClick: openPasswordDialog, show: canManageUser },
+        {
+            label: (u: User) => (u.is_active ? 'Disable Access' : 'Enable Access'),
+            iconGetter: (u: User) => (u.is_active ? UserX : UserCheck),
+            onClick: (u: User) => toggleActiveDialog.open(u),
+            show: canManageUser,
+            separator: true
+        },
         {
             label: 'Delete',
             icon: Trash2,
-            onClick: handleDeleteUser,
+            onClick: (u: User) => deleteDialog.open(u),
             variant: 'destructive',
-            separator: true,
-            show: (u) => canDeleteUsers && canManageUser(u)
+            show: (u: User) => canDeleteUsers && canManageUser(u)
         }
     ];
 
@@ -540,6 +600,16 @@ export default function UsersPage() {
                                     <SelectItem value="root">Root</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                     <SelectItem value="user">User</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={statusFilter} onValueChange={(value: 'all' | 'active' | 'disabled') => setStatusFilter(value)}>
+                                <SelectTrigger className="w-[140px]">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="disabled">Disabled</SelectItem>
                                 </SelectContent>
                             </Select>
                             {hasActiveFilters && (
@@ -643,6 +713,12 @@ export default function UsersPage() {
                     <p className="text-xs text-muted-foreground">Password must be at least 6 characters long.</p>
                 </div>
             </FormDialog>
+
+            {/* Delete User Confirm Dialog */}
+            <ConfirmDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && deleteDialog.close()} title="Delete User" description={`Are you sure you want to delete ${deleteDialog.selectedItem?.email}? This action cannot be undone.`} onConfirm={handleDeleteUser} confirmLabel="Delete" variant="destructive" />
+
+            {/* Toggle User Active Confirm Dialog */}
+            <ConfirmDialog open={toggleActiveDialog.isOpen} onOpenChange={(open) => !open && toggleActiveDialog.close()} title={toggleActiveDialog.selectedItem?.is_active ? 'Disable User Access' : 'Enable User Access'} description={toggleActiveDialog.selectedItem?.is_active ? `Are you sure you want to disable access for ${toggleActiveDialog.selectedItem?.email}? They will not be able to use their RFID tokens.` : `Are you sure you want to enable access for ${toggleActiveDialog.selectedItem?.email}? They will be able to use their RFID tokens again.`} onConfirm={handleToggleUserActive} confirmLabel={toggleActiveDialog.selectedItem?.is_active ? 'Disable' : 'Enable'} variant={toggleActiveDialog.selectedItem?.is_active ? 'destructive' : 'default'} />
         </div>
     );
 }

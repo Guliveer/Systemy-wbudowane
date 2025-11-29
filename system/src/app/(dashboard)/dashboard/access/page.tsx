@@ -7,13 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Shield, Users, ScanLine, RefreshCw, Search, X, User as UserIcon, Pencil, Filter, ArrowUpDown, ArrowUp, ArrowDown, Copy, Check } from 'lucide-react';
+import { Plus, Trash2, Shield, Users, ScanLine, RefreshCw, Search, X, User as UserIcon, Pencil, Filter, ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/utils/supabase/client';
 import { logger } from '@/lib/logger';
 import { isExpired, formatExpiry } from '@/lib/utils/format';
-import { PageHeader, StatCard, StatCardsGrid, DataTable, FormDialog } from '@/components/dashboard';
+import { PageHeader, StatCard, StatCardsGrid, DataTable, FormDialog, ConfirmDialog } from '@/components/dashboard';
 import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useDialog, useForm, useSubmit } from '@/hooks/use-crud';
 import type { ScannerAccess, User, Scanner } from '@/types/database';
@@ -26,6 +26,19 @@ interface ExtendedScannerAccess extends ScannerAccess {
   scanner_location?: string;
   granted_by_name?: string;
 }
+
+// Helper function to get status badge variant
+const getAccessStatusBadgeVariant = (isActive: boolean, isExpired: boolean): 'default' | 'secondary' | 'destructive' => {
+    if (isExpired) { return 'destructive'; }
+    if (!isActive) { return 'secondary'; }
+    return 'default';
+};
+
+const getAccessStatusLabel = (isActive: boolean, isExpired: boolean): string => {
+    if (isExpired) { return 'Expired'; }
+    if (!isActive) { return 'Disabled'; }
+    return 'Active';
+};
 
 interface AccessForm {
   user_id: string;
@@ -72,7 +85,9 @@ function UserSearchSelect({ users, value, onChange }: { users: User[]; value: st
     const selectedUser = users.find((u) => u.id === value);
 
     const filteredUsers = useMemo(() => {
-        if (!userSearchQuery) { return users.slice(0, 50); }
+        if (!userSearchQuery) {
+            return users.slice(0, 50);
+        }
         const query = userSearchQuery.toLowerCase();
         return users.filter((user) => user.full_name?.toLowerCase().includes(query) || user.email.toLowerCase().includes(query)).slice(0, 50);
     }, [userSearchQuery, users]);
@@ -172,7 +187,9 @@ function ScannerSearchSelect({ scanners, value, onChange }: { scanners: Scanner[
     const selectedScanner = scanners.find((d) => d.id === value);
 
     const filteredScanners = useMemo(() => {
-        if (!scannerSearchQuery) { return scanners.slice(0, 50); }
+        if (!scannerSearchQuery) {
+            return scanners.slice(0, 50);
+        }
         const query = scannerSearchQuery.toLowerCase();
         return scanners.filter((scanner) => scanner.name.toLowerCase().includes(query) || scanner.location.toLowerCase().includes(query)).slice(0, 50);
     }, [scannerSearchQuery, scanners]);
@@ -264,7 +281,7 @@ export default function AccessPage() {
     const [scanners, setScanners] = useState<Scanner[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled' | 'expired'>('all');
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [pageSize, setPageSize] = useState<number>(50);
@@ -272,6 +289,8 @@ export default function AccessPage() {
 
     const grantDialog = useDialog<ExtendedScannerAccess>();
     const editDialog = useDialog<ExtendedScannerAccess>();
+    const revokeDialog = useDialog<ExtendedScannerAccess>();
+    const toggleActiveDialog = useDialog<ExtendedScannerAccess>();
     const grantForm = useForm<AccessForm>(initialForm);
     const editForm = useForm<{ expires_at: string; is_permanent: boolean }>({ expires_at: '', is_permanent: true });
     const { isSubmitting, submit } = useSubmit();
@@ -335,11 +354,20 @@ export default function AccessPage() {
         const filtered = accessList.filter((access) => {
             // Status filter
             const expired = isExpired(access.expires_at);
-            if (statusFilter === 'active' && expired) { return false; }
-            if (statusFilter === 'expired' && !expired) { return false; }
+            if (statusFilter === 'active' && (expired || !access.is_active)) {
+                return false;
+            }
+            if (statusFilter === 'disabled' && (access.is_active || expired)) {
+                return false;
+            }
+            if (statusFilter === 'expired' && !expired) {
+                return false;
+            }
 
             // Search query filter
-            if (!searchQuery) { return true; }
+            if (!searchQuery) {
+                return true;
+            }
             const query = searchQuery.toLowerCase();
             return access.id.toLowerCase().includes(query) || access.user_name?.toLowerCase().includes(query) || access.user_email?.toLowerCase().includes(query) || access.scanner_name?.toLowerCase().includes(query) || access.scanner_location?.toLowerCase().includes(query) || access.granted_by_name?.toLowerCase().includes(query);
         });
@@ -435,7 +463,9 @@ export default function AccessPage() {
 
     // Sort icon component
     const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) { return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />; }
+        if (sortField !== field) {
+            return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />;
+        }
         return sortDirection === 'asc' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
     };
 
@@ -476,10 +506,10 @@ export default function AccessPage() {
         }
     };
 
-    const handleRevokeAccess = async (access: ExtendedScannerAccess) => {
-        if (!confirm(`Are you sure you want to revoke ${access.user_name}'s access to ${access.scanner_name}?`)) {
-            return;
-        }
+    const handleRevokeAccess = async () => {
+        if (!revokeDialog.selectedItem) { return; }
+
+        const access = revokeDialog.selectedItem;
 
         const { error } = await supabase.from('scanner_access').delete().eq('id', access.id);
 
@@ -489,6 +519,7 @@ export default function AccessPage() {
         }
 
         toast.success('Access revoked', { description: `Revoked ${access.user_name}'s access to ${access.scanner_name}` });
+        revokeDialog.close();
         fetchData();
     };
 
@@ -528,6 +559,27 @@ export default function AccessPage() {
         if (success) {
             editDialog.close();
         }
+    };
+
+    const handleToggleAccessActive = async () => {
+        if (!toggleActiveDialog.selectedItem) { return; }
+
+        const access = toggleActiveDialog.selectedItem;
+        const newStatus = !access.is_active;
+        const action = newStatus ? 'enable' : 'disable';
+
+        const { error } = await supabase.from('scanner_access').update({ is_active: newStatus }).eq('id', access.id);
+
+        if (error) {
+            toast.error(`Failed to ${action} access`, { description: error.message });
+            return;
+        }
+
+        toast.success(`Access ${newStatus ? 'enabled' : 'disabled'}`, {
+            description: `${access.user_name}'s access to ${access.scanner_name} has been ${newStatus ? 'enabled' : 'disabled'}`
+        });
+        toggleActiveDialog.close();
+        fetchData();
     };
 
     const openEditDialog = (access: ExtendedScannerAccess) => {
@@ -615,6 +667,14 @@ export default function AccessPage() {
                 </button>
             ),
             render: (access) => <Badge variant={isExpired(access.expires_at) ? 'destructive' : access.expires_at ? 'secondary' : 'default'}>{formatExpiry(access.expires_at)}</Badge>
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            render: (access) => {
+                const expired = isExpired(access.expires_at);
+                return <Badge variant={getAccessStatusBadgeVariant(access.is_active, expired)}>{getAccessStatusLabel(access.is_active, expired)}</Badge>;
+            }
         }
     ];
 
@@ -627,11 +687,17 @@ export default function AccessPage() {
             show: () => canGrantAccess
         },
         {
+            label: (access: ExtendedScannerAccess) => (access.is_active ? 'Disable Access' : 'Enable Access'),
+            iconGetter: (access: ExtendedScannerAccess) => (access.is_active ? ToggleLeft : ToggleRight),
+            onClick: (access: ExtendedScannerAccess) => toggleActiveDialog.open(access),
+            show: () => canGrantAccess,
+            separator: true
+        },
+        {
             label: 'Revoke Access',
             icon: Trash2,
-            onClick: handleRevokeAccess,
+            onClick: (access: ExtendedScannerAccess) => revokeDialog.open(access),
             variant: 'destructive',
-            separator: true,
             show: () => canRevokeAccess
         }
     ];
@@ -738,13 +804,14 @@ export default function AccessPage() {
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-4">
-                            <Select value={statusFilter} onValueChange={(value: 'all' | 'active' | 'expired') => setStatusFilter(value)}>
+                            <Select value={statusFilter} onValueChange={(value: 'all' | 'active' | 'disabled' | 'expired') => setStatusFilter(value)}>
                                 <SelectTrigger className="w-[140px]">
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Status</SelectItem>
                                     <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="disabled">Disabled</SelectItem>
                                     <SelectItem value="expired">Expired</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -868,6 +935,12 @@ export default function AccessPage() {
                     )}
                 </div>
             </FormDialog>
+
+            {/* Revoke Access Confirm Dialog */}
+            <ConfirmDialog open={revokeDialog.isOpen} onOpenChange={(open) => !open && revokeDialog.close()} title="Revoke Access" description={`Are you sure you want to revoke ${revokeDialog.selectedItem?.user_name}'s access to ${revokeDialog.selectedItem?.scanner_name}? This action cannot be undone.`} onConfirm={handleRevokeAccess} confirmLabel="Revoke" variant="destructive" />
+
+            {/* Toggle Access Active Confirm Dialog */}
+            <ConfirmDialog open={toggleActiveDialog.isOpen} onOpenChange={(open) => !open && toggleActiveDialog.close()} title={toggleActiveDialog.selectedItem?.is_active ? 'Disable Access' : 'Enable Access'} description={toggleActiveDialog.selectedItem?.is_active ? `Are you sure you want to disable ${toggleActiveDialog.selectedItem?.user_name}'s access to ${toggleActiveDialog.selectedItem?.scanner_name}? They will not be able to use this scanner.` : `Are you sure you want to enable ${toggleActiveDialog.selectedItem?.user_name}'s access to ${toggleActiveDialog.selectedItem?.scanner_name}? They will be able to use this scanner again.`} onConfirm={handleToggleAccessActive} confirmLabel={toggleActiveDialog.selectedItem?.is_active ? 'Disable' : 'Enable'} variant={toggleActiveDialog.selectedItem?.is_active ? 'destructive' : 'default'} />
         </div>
     );
 }

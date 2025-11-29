@@ -99,10 +99,24 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
 
         if (error) {
             console.error('RPC error:', error);
+            console.error('RPC error details:', JSON.stringify(error, null, 2));
+
+            // Check if the function doesn't exist
+            if (error.message?.includes('function') || error.code === '42883') {
+                return NextResponse.json(
+                    {
+                        access: {granted: false},
+                        error: 'Database function not found. Please run the SQL migration.',
+                        timestamp
+                    },
+                    {status: 500}
+                );
+            }
+
             return NextResponse.json(
                 {
                     access: {granted: false},
-                    error: 'Internal server error',
+                    error: `Database error: ${error.message || 'Unknown error'}`,
                     timestamp
                 },
                 {status: 500}
@@ -118,7 +132,11 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
                 USER_NOT_FOUND: 404,
                 SCANNER_NOT_FOUND: 404,
                 TOKEN_DISABLED: 403,
-                SCANNER_DISABLED: 403
+                SCANNER_DISABLED: 403,
+                USER_DISABLED: 403,
+                ACCESS_DISABLED: 403,
+                ACCESS_EXPIRED: 403,
+                NO_ACCESS: 403
             };
 
             const status = result.error_code ? errorCodeToStatus[result.error_code] || 500 : 500;
@@ -144,10 +162,11 @@ export async function POST(request: Request): Promise<NextResponse<Response>> {
         );
     } catch (error) {
         console.error('POST access error:', error);
+        console.error('Error details:', error instanceof Error ? error.message : String(error));
         return NextResponse.json(
             {
                 access: {granted: false},
-                error: 'Internal server error',
+                error: error instanceof Error ? error.message : 'Internal server error',
                 timestamp
             },
             {status: 500}

@@ -97,11 +97,17 @@ export default function TokensPage() {
     const filteredAndSortedTokens = useMemo(() => {
         const filtered = tokens.filter((token) => {
             // Status filter
-            if (statusFilter === 'active' && !token.is_active) { return false; }
-            if (statusFilter === 'disabled' && token.is_active) { return false; }
+            if (statusFilter === 'active' && !token.is_active) {
+                return false;
+            }
+            if (statusFilter === 'disabled' && token.is_active) {
+                return false;
+            }
 
             // Search query filter
-            if (!searchQuery) { return true; }
+            if (!searchQuery) {
+                return true;
+            }
             const query = searchQuery.toLowerCase();
             return token.id.toLowerCase().includes(query) || token.rfid_uid.toLowerCase().includes(query) || token.name.toLowerCase().includes(query) || token.user_name?.toLowerCase().includes(query) || token.user_email?.toLowerCase().includes(query);
         });
@@ -143,9 +149,15 @@ export default function TokensPage() {
             }
 
             // Handle null values
-            if (aValue === null && bValue === null) { return 0; }
-            if (aValue === null) { return sortDirection === 'asc' ? 1 : -1; }
-            if (bValue === null) { return sortDirection === 'asc' ? -1 : 1; }
+            if (aValue === null && bValue === null) {
+                return 0;
+            }
+            if (aValue === null) {
+                return sortDirection === 'asc' ? 1 : -1;
+            }
+            if (bValue === null) {
+                return sortDirection === 'asc' ? -1 : 1;
+            }
 
             // Compare values
             if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
@@ -207,17 +219,17 @@ export default function TokensPage() {
         return sortDirection === 'asc' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
     };
 
-    // Copyable ID component
-    const CopyableId = ({ id }: { id: string }) => {
+    // Copyable RFID Token component
+    const CopyableRfidToken = ({ rfid_uid }: { rfid_uid: string }) => {
         const handleCopy = async () => {
-            await navigator.clipboard.writeText(id);
-            toast.success('ID skopiowane do schowka');
+            await navigator.clipboard.writeText(rfid_uid);
+            toast.success('RFID Token skopiowany do schowka');
         };
 
         return (
             <div className="inline-flex items-center gap-1">
-                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{id}</code>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCopy} title="Kopiuj ID">
+                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{rfid_uid}</code>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCopy} title="Kopiuj RFID Token">
                     <Copy className="h-3 w-3" />
                 </Button>
             </div>
@@ -328,24 +340,14 @@ export default function TokensPage() {
     // Table columns
     const columns: Column<ExtendedToken>[] = [
         {
-            key: 'id',
-            header: (
-                <button onClick={() => toggleSort('id')} className="inline-flex items-center hover:text-foreground">
-          ID
-                    <SortIcon field="id" />
-                </button>
-            ),
-            render: (token) => <CopyableId id={token.id} />
-        },
-        {
             key: 'rfid_uid',
             header: (
                 <button onClick={() => toggleSort('rfid_uid')} className="inline-flex items-center hover:text-foreground">
-          RFID UID
+          RFID Token
                     <SortIcon field="rfid_uid" />
                 </button>
             ),
-            render: (token) => <span className="font-mono font-medium">{token.rfid_uid}</span>
+            render: (token) => <CopyableRfidToken rfid_uid={token.rfid_uid} />
         },
         {
             key: 'name',
@@ -414,7 +416,9 @@ export default function TokensPage() {
         const selectedUser = users.find((u) => u.id === value);
 
         const filteredUsers = useMemo(() => {
-            if (!userSearchQuery) { return users.slice(0, 50); } // Show first 50 users when no search
+            if (!userSearchQuery) {
+                return users.slice(0, 50);
+            } // Show first 50 users when no search
             const query = userSearchQuery.toLowerCase();
             return users.filter((user) => user.full_name?.toLowerCase().includes(query) || user.email.toLowerCase().includes(query)).slice(0, 50); // Limit to 50 results
         }, [userSearchQuery, users]);

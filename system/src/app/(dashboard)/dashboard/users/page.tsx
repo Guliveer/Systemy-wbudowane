@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Shield, UserCog, Key, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown, UserX, UserCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, UserCog, Key, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown, UserX, UserCheck, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/utils/supabase/client';
@@ -244,7 +244,9 @@ export default function UsersPage() {
     };
 
     const handleDeleteUser = async () => {
-        if (!deleteDialog.selectedItem) { return; }
+        if (!deleteDialog.selectedItem) {
+            return;
+        }
 
         const user = deleteDialog.selectedItem;
 
@@ -266,7 +268,9 @@ export default function UsersPage() {
     };
 
     const handleToggleUserActive = async () => {
-        if (!toggleActiveDialog.selectedItem) { return; }
+        if (!toggleActiveDialog.selectedItem) {
+            return;
+        }
 
         const user = toggleActiveDialog.selectedItem;
         const newStatus = !user.is_active;
@@ -515,12 +519,18 @@ export default function UsersPage() {
                 title="Users"
                 description="Manage system users and their permissions"
                 actions={
-                    canCreateUsers && (
-                        <Button onClick={() => createDialog.open()}>
-                            <Plus className="mr-2 h-4 w-4" />
-              Add User
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => fetchData()} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
                         </Button>
-                    )
+                        {canCreateUsers && (
+                            <Button onClick={() => createDialog.open()}>
+                                <Plus className="mr-2 h-4 w-4" />
+                Add User
+                            </Button>
+                        )}
+                    </div>
                 }
             />
 

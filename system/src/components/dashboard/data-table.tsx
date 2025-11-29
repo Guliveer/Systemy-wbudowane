@@ -64,7 +64,7 @@ function PaginationControls({ currentPage, totalPages, pageSize, totalItems, onP
             </div>
             <div className="flex items-center gap-2">
                 <Select value={pageSize.toString()} onValueChange={(value) => onPageSizeChange(parseInt(value))}>
-                    <SelectTrigger className="w-[120px] h-8">
+                    <SelectTrigger className="w-auto h-8">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

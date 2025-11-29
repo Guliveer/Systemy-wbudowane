@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, ScanLine, Power, PowerOff, LogIn, LogOut, ArrowLeftRight, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, ScanLine, Power, PowerOff, LogIn, LogOut, ArrowLeftRight, Search, Copy, Check, Filter, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { PageHeader, StatCard, StatCardsGrid, DataTable, FormDialog } from '@/components/dashboard';
@@ -175,14 +175,22 @@ export default function ScannersPage() {
     // First filter
         const filtered = scanners.filter((scanner) => {
             // Status filter
-            if (statusFilter === 'active' && !scanner.is_active) { return false; }
-            if (statusFilter === 'inactive' && scanner.is_active) { return false; }
+            if (statusFilter === 'active' && !scanner.is_active) {
+                return false;
+            }
+            if (statusFilter === 'inactive' && scanner.is_active) {
+                return false;
+            }
 
             // Reader type filter
-            if (readerTypeFilter !== 'all' && scanner.reader_type !== readerTypeFilter) { return false; }
+            if (readerTypeFilter !== 'all' && scanner.reader_type !== readerTypeFilter) {
+                return false;
+            }
 
             // Search query filter
-            if (!searchQuery) { return true; }
+            if (!searchQuery) {
+                return true;
+            }
             const query = searchQuery.toLowerCase();
             return scanner.id.toLowerCase().includes(query) || scanner.name.toLowerCase().includes(query) || scanner.location.toLowerCase().includes(query) || scanner.description?.toLowerCase().includes(query) || (scanner.reader_type || 'both').toLowerCase().includes(query);
         });
@@ -279,7 +287,9 @@ export default function ScannersPage() {
 
     // Sort icon component
     const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) { return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />; }
+        if (sortField !== field) {
+            return <ArrowUpDown className="ml-2 h-3 w-3 opacity-50" />;
+        }
         return sortDirection === 'asc' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
     };
 
@@ -429,12 +439,18 @@ export default function ScannersPage() {
                 title="Scanners"
                 description="Manage access points and scanner configurations"
                 actions={
-                    canCreateScanners && (
-                        <Button onClick={() => createDialog.open()}>
-                            <Plus className="mr-2 h-4 w-4" />
-              Add Scanner
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => fetchData()} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
                         </Button>
-                    )
+                        {canCreateScanners && (
+                            <Button onClick={() => createDialog.open()}>
+                                <Plus className="mr-2 h-4 w-4" />
+                Add Scanner
+                            </Button>
+                        )}
+                    </div>
                 }
             />
 

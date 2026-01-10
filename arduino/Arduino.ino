@@ -69,6 +69,8 @@ void loop() {
     
     getCardID(currentCardID);
     mfrc522.PICC_HaltA();
+    mfrc522.PCD_StopCrypto1();
+    delay(100);
     
     if (strcmp(currentCardID, lastCardID) == 0 && (millis() - lastCardTime) < 2000) {
         return;
@@ -86,6 +88,8 @@ void loop() {
     } else {
         Serial.println("[DOSTEP] Odmowiony!");
     }
+    
+    mfrc522.PCD_Init();
 }
 
 void getCardID(char* buffer) {

@@ -168,14 +168,14 @@ export default function DashboardPage() {
       // Calculate access stats
       // "Unknown" = token not registered in system (token_id is NULL)
       const accessStats = {
-        granted: accessLogsData.filter((log: any) => log.access_granted === true && log.token_id !== null).length,
-        denied: accessLogsData.filter((log: any) => log.access_granted === false && log.token_id !== null).length,
-        unknown: accessLogsData.filter((log: any) => log.token_id === null).length,
+        granted: accessLogsData.filter((log: { access_granted: boolean | null; token_id: string | null }) => log.access_granted === true && log.token_id !== null).length,
+        denied: accessLogsData.filter((log: { access_granted: boolean | null; token_id: string | null }) => log.access_granted === false && log.token_id !== null).length,
+        unknown: accessLogsData.filter((log: { token_id: string | null }) => log.token_id === null).length,
       };
 
       // Calculate top scanners
       const scannerCounts: Record<string, { id: string; name: string; location: string; count: number }> = {};
-      (topScannersResult.data || []).forEach((log: any) => {
+      (topScannersResult.data || []).forEach((log: { scanners: { id: string; name: string; location: string } | null }) => {
         if (log.scanners) {
           const scannerId = log.scanners.id;
           if (!scannerCounts[scannerId]) {
@@ -195,7 +195,7 @@ export default function DashboardPage() {
         .slice(0, 10)
         .map((s) => ({ ...s, access_count: s.count }));
 
-      const recentLogs: RecentLog[] = (logsResult.data || []).map((log: any) => ({
+      const recentLogs: RecentLog[] = (logsResult.data || []).map((log: { id: string; timestamp: string; access_granted: boolean | null; rfid_uid: string; tokens: { id: string; name: string; rfid_uid: string; is_active: boolean; users: { id: string; full_name: string; email: string; is_active: boolean } | null } | null; scanners: { id: string; name: string; location: string } | null }) => ({
         id: log.id,
         timestamp: log.timestamp,
         access_granted: log.access_granted,
@@ -217,9 +217,9 @@ export default function DashboardPage() {
         totalUsers: usersData.length,
         activeUsers: usersData.filter((u: { is_active: boolean }) => u.is_active).length,
         totalScanners: scannersData.length,
-        activeScanners: scannersData.filter((d) => d.is_active).length,
+        activeScanners: scannersData.filter((d: { is_active: boolean }) => d.is_active).length,
         totalTokens: tokensData.length,
-        activeTokens: tokensData.filter((t) => t.is_active).length,
+        activeTokens: tokensData.filter((t: { is_active: boolean }) => t.is_active).length,
         totalAccessGrants: accessResult.count || 0,
         recentLogs,
         accessStats,

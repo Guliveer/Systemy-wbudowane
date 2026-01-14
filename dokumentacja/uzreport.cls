@@ -146,7 +146,7 @@
 \end{center}
 \vspace{7em}
 \begin{center}
-{\Huge Sprawozdanie z\if\@type l laboratorium \else projektu \fi
+{\Huge Dokumentacja z \if\@type l laboratorium \else projektu \fi
 \\ \LARGE \@class\\[4em]}
 {\LARGE \@labnumber: \@lab\\[3em]}
 {\LARGE\@date\\[3em]}

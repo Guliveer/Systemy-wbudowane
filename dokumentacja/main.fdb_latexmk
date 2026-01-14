@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1768409311.85815 "f:/Projects/Systemy-wbudowane/dokumentacja/main.tex" "main.pdf" "main" 1768409314.40887 0
+["pdflatex"] 1768409696.10562 "f:/Projects/Systemy-wbudowane/dokumentacja/main.tex" "main.pdf" "main" 1768409698.4757 0
   "C:/Users/dawid/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1768404428 80909 eab91d9745dd2edfd62a31d53cd5fe15 ""
   "C:/Users/dawid/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1747845078 13157641 caff38cee323384c63900630205f9f86 ""
   "C:/Users/dawid/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc" 1256929440 2375 baa924870cfb487815765f9094cf3728 ""
@@ -255,13 +255,13 @@
   "C:/Users/dawid/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/dawid/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
   "C:/Users/dawid/AppData/Local/Programs/MiKTeX/tex/latex/xkeyval/xkeyval.sty" 1656236919 4937 4ce600ce9bd4ec84d0250eb6892fcf4f ""
-  "f:/Projects/Systemy-wbudowane/dokumentacja/main.tex" 1768409311 17933 53c6c1db3a0ce480e73a71506eaba39b ""
+  "f:/Projects/Systemy-wbudowane/dokumentacja/main.tex" 1768409695 17957 2ec5fa46c3ed95142d0404a334dae6b8 ""
   "logo.eps" 1768400978 2773299 3ecef931e3a30844b363f0ec013c5d94 ""
-  "main.aux" 1768409314 7191 5bf642870b1ff5db634c86349a477680 "pdflatex"
-  "main.out" 1768409314 2006 4bd8d781c6f8f50d5457578d683e26c6 "pdflatex"
-  "main.tex" 1768409311 17933 53c6c1db3a0ce480e73a71506eaba39b ""
-  "main.toc" 1768409314 1084 213e4cc93c8f44be7fd3fe797e688384 "pdflatex"
-  "uzreport.cls" 1768400978 7260 591cb06e1df288222b300620ff298993 ""
+  "main.aux" 1768409698 7191 5bf642870b1ff5db634c86349a477680 "pdflatex"
+  "main.out" 1768409698 2006 4bd8d781c6f8f50d5457578d683e26c6 "pdflatex"
+  "main.tex" 1768409695 17957 2ec5fa46c3ed95142d0404a334dae6b8 ""
+  "main.toc" 1768409698 1084 213e4cc93c8f44be7fd3fe797e688384 "pdflatex"
+  "uzreport.cls" 1768409655 7261 af4f2024bf676adb60ea96d9bedfae7b ""
   "zdjecia/image1.png" 1768373592 128708 f986ac3ef77fd7097a16e52b9bc053f3 ""
   "zdjecia/image10.png" 1768373594 223905 87996e09a93cce4ae88f024cfe3be79c ""
   "zdjecia/image11.jpg" 1768373594 316990 2264b39f06b581fcdd4783a8ad16f5b0 ""
